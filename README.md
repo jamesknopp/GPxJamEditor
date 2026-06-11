@@ -18,7 +18,7 @@ the basis — the hardware (HW) JAM format took a bit more digging to get workin
   in a JAM at once, saved as BMPs with pre-filled filenames (`<JamName>_<JamID>.bmp`).
 - **Canvas tools** — canvas packing (bin-packing), a move tool, zoom and high-DPI support.
 - **RCR (car) JAM viewing** — with experimental sprite rendering.
-- **Jam browser** — browse the entries inside a JAM.
+- **Jam browser** — browse for Jams.
 
 ## Thanks
 
