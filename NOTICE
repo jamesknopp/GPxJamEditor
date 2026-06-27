@@ -6,5 +6,10 @@ which is distributed under its own license (Mozilla Public License 1.1 /
 LGPL 2.1, see the license headers in those source files). The Virtual
 TreeView component is not covered by the MIT license of this project.
 
+This project also bundles the MustangPeak EasyListView and Common Library
+components under `mustangpeak/`, distributed under the Mozilla Public License
+1.1 / LGPL 2.1 (see `mustangpeak/LICENCE` and the source headers). These
+components are not covered by the MIT license of this project.
+
 The JAM file format decryption is based on original work by Trevor Kellaway.
 Thanks also to Paul Hoad, Mal Ross, John Verheijen and René Smit.
