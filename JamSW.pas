@@ -780,6 +780,13 @@ var
   palBytes, i: integer;
   buffer: TBytes;
 begin
+  // For JIP files, always regenerate the power-of-two mip strip first so the
+  // saved canvas carries a fresh, correctly laid-out mip pyramid (1.5x height)
+  // instead of relying on a prior edit having refreshed it. DrawJIPMipmaps
+  // recomputes the height from the entries, so this is idempotent.
+  if boolJipMode then
+    DrawJIPMipmaps;
+
   // 0) Make sure your canvas encoding has run
   EncodeCanvas;
 
@@ -1471,6 +1478,9 @@ var
   bestidx: integer;
   Mask: TBoolGrid;
 
+  allowed: array [0 .. 255] of Boolean;
+  dr, dg, db, dist, bestDist: integer;
+
 begin
   mipMapHeight := 0;
 
@@ -1514,48 +1524,32 @@ begin
 
   SetLength(FRawData, newLength);
 
+  // GP3 mip strip layout (verified against real gamejips\*.jip):
+  //   The whole 256xbaseH canvas is downsampled by powers of two (/2,/4,/8,...)
+  //   and packed left-to-right into the baseH/2-tall strip below the base.
+  //   Level k (k=1..) has reserved width 256 shr k, so the cumulative X
+  //   offset lands on 0,128,192,224,240,248,... = 256*(1 - 1/2^(k-1)).
+  //   All levels are top-aligned at Y=mipMapHeight. Downsampling the full
+  //   canvas (rather than per-texture) fills the inter-texture background
+  //   gaps correctly, matching the original files.
   posX := 0;
-  Z := 0;
-  for j := 0 to 5 do
+  j := 0;
+  while True do
   begin
-    sizeFactor := (j + 2) + (j * Z);
+    sizeFactor := 1 shl (j + 1); // 2, 4, 8, 16, 32, 64, ...
 
     newWidth := 256 div sizeFactor;
     newHeight := mipMapHeight div sizeFactor;
 
-   tmpJam.canvas.draw(posx,mipMapHeight, stretchf(FastBoxBlur_MT_SIMD(tmpCanvas, 2,2),newWidth,newHeight));
+    // Stop once a level would collapse below a single pixel in either axis.
+    if (newWidth < 1) or (newHeight < 1) then
+      Break;
 
-    tmpMipMap.Width := newWidth;
-    tmpMipMap.Height := newHeight;
-
-
-    if j < 3 then
-      for i := 0 to FEntries.Count - 1 do
-      begin
-        tmpTexture := TBitmap.Create;
-        tmpTexture.Canvas.Brush.Color := RGB(gpxPal[0].r, gpxPal[0].g, gpxPal[0].b);
-        tmpTexture.PixelFormat := pf32bit;
-        tmpTexture.SetSize(FEntries[i].FTexture.Width,
-          FEntries[i].FTexture.Height);
-        tmpTexture.Canvas.Draw(0, 0, FEntries[i].FTexture);
-
-       FastBoxBlur_MT_SIMD(tmpTexture, 1 * (j+1), 2 * (j+1));
-
-        texWidth := FEntries[i].Info.Width div sizeFactor;
-        texHeight := FEntries[i].Info.Height div sizeFactor;
-
-        newX := posX + (FEntries[i].Info.X div sizeFactor);
-        newY := mipMapHeight + (FEntries[i].Info.Y div sizeFactor);
-
-        tmpJAM.Canvas.Draw(newX, newY, stretchF(tmpTexture, texWidth,
-          texHeight));
-
-        tmpTexture.free;
-      end;
+    tmpJam.Canvas.Draw(posX, mipMapHeight,
+      stretchf(FastBoxBlur_MT_SIMD(tmpCanvas, 2, 2), newWidth, newHeight));
 
     Inc(posX, newWidth);
-    Inc(Z);
-
+    Inc(j);
   end;
 
   for i := 0 to FEntries.Count - 1 do
@@ -1605,6 +1599,46 @@ begin
   begin
     Move(tempRawCanvas[Y * canvasWidth], FRawData[Y * canvasWidth],
       canvasWidth);
+  end;
+
+  // Restrict the mip strip to the textures' OWN working palette.
+  // GP3's original mips only ever use indices the source textures use
+  // (background + the texture's own colours). Full-256 RGB requantisation of
+  // blurred edge pixels can instead land on "colored surface" indices the
+  // source never used (e.g. olive/khaki in the 160-255 range); GP3 distance-
+  // shades those dark, producing dark blotches on the distance mipmaps.
+  // Snap any mip-strip pixel whose index isn't in the working palette to the
+  // nearest index that IS, so mips can only use colours the source contains.
+  FillChar(allowed, SizeOf(allowed), 0);
+  allowed[0] := True; // background
+  for i := 0 to FEntries.Count - 1 do
+  begin
+    TempRaw := FEntries[i].FRawTexture;
+    for pos := 0 to High(TempRaw) do
+      allowed[TempRaw[pos]] := True;
+  end;
+  for pos := 256 * mipMapHeight to Length(FRawData) - 1 do
+  begin
+    origidx := FRawData[pos];
+    if not allowed[origidx] then
+    begin
+      bestidx := origidx;
+      bestDist := High(integer);
+      for j := 0 to 255 do
+        if allowed[j] then
+        begin
+          dr := gpxPal[origidx].r - gpxPal[j].r;
+          dg := gpxPal[origidx].g - gpxPal[j].g;
+          db := gpxPal[origidx].b - gpxPal[j].b;
+          dist := dr * dr + dg * dg + db * db;
+          if dist < bestDist then
+          begin
+            bestDist := dist;
+            bestidx := j;
+          end;
+        end;
+      FRawData[pos] := bestidx;
+    end;
   end;
 
 end;

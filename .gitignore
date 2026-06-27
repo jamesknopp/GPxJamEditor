@@ -80,3 +80,9 @@ __recovery/
 
 # Boss dependency manager vendor folder https://github.com/HashLoad/boss
 modules/
+
+# Claude Code personal/local config (never committed, never published)
+.claude/settings.local.json
+
+# Runtime palette-detection cache (machine-specific local paths; regenerated on use)
+jam_palettes.json
