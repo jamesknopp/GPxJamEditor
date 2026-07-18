@@ -415,6 +415,11 @@ type
                 // regardless of DPI-awareness mode or Application.OnMessage quirks.
                 procedure WMFormMove(var Msg: TMessage); message WM_MOVE;
 
+                // Receives a file path forwarded by a second instance
+                // (see jamviewer.dpr); prompts, then opens it.
+                procedure WMCopyData(var Msg: TWMCopyData);
+                  message WM_COPYDATA;
+
         public
                 FJamFile: TJamFile;
                 FHWJamFile: THWJamFile;
@@ -445,6 +450,7 @@ type
                 procedure DeSelectTexture();
                 procedure NewJam(filename: string; height: integer);
                 procedure LoadJam(filename: string);
+                procedure OpenCommandLineFile;
                 procedure UpdateJamData(id: integer);
                 procedure SelectTreeTex();
                 procedure ClearPaletteImg();
@@ -2811,6 +2817,64 @@ begin
 
         JamModified(false);
 
+end;
+
+procedure TFormMain.OpenCommandLineFile;
+var
+        filePath, ext: string;
+begin
+        if ParamCount < 1 then
+                Exit;
+
+        filePath := ExpandFileName(ParamStr(1));
+        ext := LowerCase(ExtractFileExt(filePath));
+
+        if ((ext = '.jam') or (ext = '.jip')) and FileExists(filePath) then
+        begin
+                LoadJam(filePath);
+                strOpenPath := ExtractFilePath(filePath);
+        end;
+end;
+
+procedure TFormMain.WMCopyData(var Msg: TWMCopyData);
+var
+        fileToOpen: string;
+        charCount: integer;
+begin
+        Msg.Result := 0;
+
+        if (Msg.CopyDataStruct = nil) or
+          (Msg.CopyDataStruct.dwData <> JamCopyDataOpenFile) or
+          (Msg.CopyDataStruct.cbData < SizeOf(Char)) then
+        begin
+                inherited;
+                Exit;
+        end;
+
+        // Copy the payload out immediately — the pointer is only valid
+        // for the duration of this handler.
+        charCount := Msg.CopyDataStruct.cbData div SizeOf(Char);
+        SetString(fileToOpen, PChar(Msg.CopyDataStruct.lpData), charCount);
+        // cbData includes the null terminator; strip it
+        fileToOpen := fileToOpen.TrimRight([#0]);
+
+        Msg.Result := 1;
+
+        if IsIconic(Application.Handle) or IsIconic(Handle) then
+                Application.Restore;
+        SetForegroundWindow(Handle);
+
+        if (fileToOpen = '') or not FileExists(fileToOpen) then
+                Exit;
+
+        // Only interrupt the user if the current session has unsaved
+        // edits — CheckJamModified prompts (save / discard / cancel) in
+        // that case and is silent otherwise, same guard as btnLoadJamClick.
+        if not CheckJamModified() then
+                Exit;
+
+        LoadJam(fileToOpen);
+        strOpenPath := ExtractFilePath(fileToOpen);
 end;
 
 procedure TFormMain.UISetup();

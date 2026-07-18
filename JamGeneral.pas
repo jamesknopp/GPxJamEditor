@@ -23,6 +23,10 @@ const
   baseKeyPath = '\Software\JKVFX\JamEditor\';
   MRUKeyPath = baseKeyPath + 'RecentFiles';
 
+  // Single-instance support (see jamviewer.dpr and TFormMain.WMCopyData)
+  JamEditorMutexName = 'JKVFX.JamEditor.SingleInstance';
+  JamCopyDataOpenFile = $4A414D31; // WM_COPYDATA dwData tag ('JAM1')
+
   dx: array [0 .. 3] of Integer = (1, -1, 0, 0);
   dy: array [0 .. 3] of Integer = (0, 0, 1, -1);
 

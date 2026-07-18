@@ -9,7 +9,7 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms,
   Vcl.Dialogs, // for TFileOpenDialog, MessageDlg
   Vcl.StdCtrls, Vcl.ExtCtrls,
-  jamgeneral, jampalettedetector, JamRCRSettings;
+  jamgeneral, jampalettedetector, JamRCRSettings, JamFileAssoc;
 
 type
   ToptionsForm = class(TForm)
@@ -30,6 +30,11 @@ type
     GroupBox3: TGroupBox;
     chkAutoArrange: TCheckBox;
     rgGP3Version: TRadioGroup;
+    GroupBox4: TGroupBox;
+    lblAssocStatus: TLabel;
+    btnAssocRegister: TButton;
+    btnAssocUnregister: TButton;
+    btnAssocDefault: TButton;
     procedure btnGP2BrowseClick(Sender: TObject);
     procedure btnGP3BrowseClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
@@ -38,9 +43,12 @@ type
     procedure btnGP32kBrowseClick(Sender: TObject);
     procedure chkAutoArrangeClick(Sender: TObject);
     procedure rgGP3VersionClick(Sender: TObject);
+    procedure btnAssocRegisterClick(Sender: TObject);
+    procedure btnAssocUnregisterClick(Sender: TObject);
+    procedure btnAssocDefaultClick(Sender: TObject);
 
   private
-    { Private declarations }
+    procedure RefreshAssocStatus;
   public
     function ValidateFolder(const APath, ExeName: string;
       const Subfolders: TArray<string>;
@@ -155,6 +163,48 @@ begin
   jampalettedetector.TJamPaletteDetector.Instance.ClearEntries;
 end;
 
+procedure ToptionsForm.RefreshAssocStatus;
+var
+  foreignExt: string;
+begin
+  btnAssocDefault.Visible := False;
+
+  if JamAssociationsRegistered then
+  begin
+    if ForeignDefaultPresent(foreignExt) then
+    begin
+      lblAssocStatus.Caption := 'Another application is the default for ' +
+        foreignExt;
+      btnAssocDefault.Visible := True;
+    end
+    else
+      lblAssocStatus.Caption := 'Currently associated with Jam Editor';
+  end
+  else
+    lblAssocStatus.Caption := 'Not associated';
+end;
+
+procedure ToptionsForm.btnAssocRegisterClick(Sender: TObject);
+begin
+  RegisterJamAssociations;
+  RefreshAssocStatus;
+end;
+
+procedure ToptionsForm.btnAssocUnregisterClick(Sender: TObject);
+begin
+  UnregisterJamAssociations;
+  RefreshAssocStatus;
+end;
+
+procedure ToptionsForm.btnAssocDefaultClick(Sender: TObject);
+var
+  foreignExt: string;
+begin
+  if ForeignDefaultPresent(foreignExt) then
+    ShowOpenWithPicker(foreignExt);
+  RefreshAssocStatus;
+end;
+
 procedure ToptionsForm.Button3Click(Sender: TObject);
 begin
   optionsForm.close;
@@ -180,6 +230,8 @@ begin
     rgGP3Version.ItemIndex := 1
   else
     rgGP3Version.ItemIndex := 0;
+
+  RefreshAssocStatus;
 end;
 
 procedure ToptionsForm.rgGP3VersionClick(Sender: TObject);

@@ -3,7 +3,7 @@ object optionsForm: ToptionsForm
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Options'
-  ClientHeight = 516
+  ClientHeight = 620
   ClientWidth = 542
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -123,7 +123,7 @@ object optionsForm: ToptionsForm
   end
   object Button3: TButton
     Left = 240
-    Top = 479
+    Top = 587
     Width = 75
     Height = 25
     Caption = 'Close'
@@ -158,6 +158,50 @@ object optionsForm: ToptionsForm
         'GP3 2000')
       TabOrder = 1
       OnClick = rgGP3VersionClick
+    end
+  end
+  object GroupBox4: TGroupBox
+    Left = 8
+    Top = 479
+    Width = 526
+    Height = 100
+    Caption = 'File Associations'
+    TabOrder = 4
+    object lblAssocStatus: TLabel
+      Left = 10
+      Top = 27
+      Width = 500
+      Height = 15
+      AutoSize = False
+      Caption = 'Checking...'
+    end
+    object btnAssocRegister: TButton
+      Left = 10
+      Top = 58
+      Width = 160
+      Height = 25
+      Caption = 'Associate .jam / .jip Files'
+      TabOrder = 0
+      OnClick = btnAssocRegisterClick
+    end
+    object btnAssocUnregister: TButton
+      Left = 180
+      Top = 58
+      Width = 140
+      Height = 25
+      Caption = 'Remove Association'
+      TabOrder = 1
+      OnClick = btnAssocUnregisterClick
+    end
+    object btnAssocDefault: TButton
+      Left = 330
+      Top = 58
+      Width = 130
+      Height = 25
+      Caption = 'Set as Default...'
+      TabOrder = 2
+      Visible = False
+      OnClick = btnAssocDefaultClick
     end
   end
 end
