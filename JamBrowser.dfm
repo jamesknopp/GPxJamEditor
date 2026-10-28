@@ -54,7 +54,10 @@ object JamBrowserFrm: TJamBrowserFrm
     Height = 38
     Panels = <
       item
-        Width = 300
+        Width = 200
+      end
+      item
+        Width = 900
       end>
     ExplicitTop = 711
     ExplicitWidth = 1192
@@ -63,48 +66,85 @@ object JamBrowserFrm: TJamBrowserFrm
     Left = 0
     Top = 0
     Width = 1198
-    Height = 40
+    Height = 72
     Align = alTop
     TabOrder = 0
     ExplicitWidth = 1192
+    object lblPath: TLabel
+      Left = 8
+      Top = 11
+      Width = 37
+      Height = 15
+      Caption = 'Folder:'
+    end
     object jamLoading: TLabel
-      Left = 894
-      Top = 12
+      Left = 900
+      Top = 44
       Width = 63
       Height = 15
       Caption = 'jamLoading'
       Visible = False
     end
+    object lblThumbSize: TLabel
+      Left = 288
+      Top = 44
+      Width = 40
+      Height = 15
+      Caption = '128 px'
+    end
+    object lblFilter: TLabel
+      Left = 352
+      Top = 44
+      Width = 32
+      Height = 15
+      Caption = 'Filter:'
+    end
+    object edtPath: TEdit
+      Left = 56
+      Top = 7
+      Width = 1134
+      Height = 23
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 0
+      OnKeyDown = edtPathKeyDown
+    end
     object SliderThumbSize: TTrackBar
       Left = 1
-      Top = 1
+      Top = 38
       Width = 280
-      Height = 38
-      Align = alLeft
+      Height = 30
       Max = 256
       Min = 64
       Position = 128
-      TabOrder = 0
+      TabOrder = 1
       OnChange = SliderThumbSizeChange
     end
+    object edtFilter: TEdit
+      Left = 392
+      Top = 40
+      Width = 180
+      Height = 23
+      TabOrder = 2
+      OnChange = edtFilterChange
+    end
     object ProgressBar: TProgressBar
-      Left = 314
-      Top = 8
-      Width = 574
-      Height = 26
+      Left = 590
+      Top = 40
+      Width = 300
+      Height = 23
       Smooth = True
       Step = 1
-      TabOrder = 1
+      TabOrder = 3
       Visible = False
       StyleName = 'Windows'
     end
     object btnCancel: TButton
       Left = 1112
-      Top = 9
+      Top = 39
       Width = 75
       Height = 25
       Caption = 'Cancel'
-      TabOrder = 2
+      TabOrder = 4
       Visible = False
       OnClick = btnCancelClick
     end
@@ -334,6 +374,7 @@ object JamBrowserFrm: TJamBrowserFrm
     end
     object AddtoBatch1: TMenuItem
       Caption = 'Add to Batch Convert'
+      OnClick = AddtoBatch1Click
     end
   end
 end

@@ -83,8 +83,17 @@ type
     Descending1: TMenuItem;
     AddtoBatch1: TMenuItem;
     btnCancel: TButton;
+    lblPath: TLabel;
+    edtPath: TEdit;
+    lblThumbSize: TLabel;
+    lblFilter: TLabel;
+    edtFilter: TEdit;
     procedure FormCreate(Sender: TObject);
     procedure SliderThumbSizeChange(Sender: TObject);
+    procedure edtPathKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure edtFilterChange(Sender: TObject);
+    procedure AddtoBatch1Click(Sender: TObject);
 
     procedure directoryTreeCompareNodes(Sender: TBaseVirtualTree;
       Node1, Node2: PVirtualNode; Column: TColumnIndex; var Result: Integer);
@@ -167,6 +176,11 @@ type
     procedure SortJams(i: Integer; order: Boolean);
 
     procedure RefreshDirectoryTree;
+    // Hide/show thumbnails against edtFilter's text (matched against the
+    // file name, extension included, so '.jip' works as a type filter).
+    procedure ApplyThumbFilter;
+    // Status bar panel 0: '12 JAMs', or 'x of y JAMs' while filtered.
+    procedure UpdateStatusCounts;
 
   public
     gotSelection: Boolean;
@@ -184,7 +198,8 @@ implementation
 {$R *.dfm}
 
 uses
-  System.Math, ShellAPI, Mask, ShlObj, ActiveX, VirtualTrees.Utils, MainForm;
+  System.Math, ShellAPI, Mask, ShlObj, ActiveX, VirtualTrees.Utils, MainForm,
+  JamBatch; // "Add to Batch Convert" pushes selected JAMs into the batch form
 
 { TJamBrowseNode }
 
@@ -292,6 +307,86 @@ procedure TJamBrowserFrm.btnCancelClick(Sender: TObject);
 begin
   cancelJob := True;
   FCurrentLoadPath := '';
+end;
+
+procedure TJamBrowserFrm.edtPathKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+var
+  path: string;
+begin
+  if Key <> VK_RETURN then
+    Exit;
+  Key := 0;
+
+  path := Trim(edtPath.Text);
+  if path = '' then
+    Exit;
+
+  if DirectoryExists(path) then
+    // Focusing the node fires directoryTreeFocusChanged, which loads the
+    // folder's thumbnails and keeps strBrowserPath / edtPath in sync.
+    NavigateToPath(directoryTree, path)
+  else
+    StatusBar1.Panels[1].Text := 'Folder not found: ' + path;
+end;
+
+procedure TJamBrowserFrm.edtFilterChange(Sender: TObject);
+begin
+  ApplyThumbFilter;
+end;
+
+procedure TJamBrowserFrm.ApplyThumbFilter;
+var
+  i: Integer;
+  f: string;
+  itm: TEasyItem;
+begin
+  f := AnsiLowerCase(Trim(edtFilter.Text));
+  jamListView.BeginUpdate;
+  try
+    for i := 0 to jamListView.Items.Count - 1 do
+    begin
+      itm := jamListView.Items[i];
+      itm.Visible := (f = '') or
+        (Pos(f, AnsiLowerCase(ExtractFileName(
+          TJamBrowseNode(itm.Data).FileName))) > 0);
+    end;
+  finally
+    jamListView.EndUpdate;
+  end;
+  UpdateStatusCounts;
+end;
+
+procedure TJamBrowserFrm.UpdateStatusCounts;
+var
+  i, total, shown: Integer;
+begin
+  total := jamListView.Items.Count;
+  shown := 0;
+  for i := 0 to total - 1 do
+    if jamListView.Items[i].Visible then
+      Inc(shown);
+  if shown = total then
+    StatusBar1.Panels[0].Text := Format('%d JAMs', [total])
+  else
+    StatusBar1.Panels[0].Text := Format('%d of %d JAMs', [shown, total]);
+end;
+
+procedure TJamBrowserFrm.AddtoBatch1Click(Sender: TObject);
+var
+  i: Integer;
+  sel: TStringList;
+begin
+  sel := TStringList.Create;
+  try
+    for i := 0 to jamListView.Items.Count - 1 do
+      if jamListView.Items[i].Selected then
+        sel.Add(TJamBrowseNode(jamListView.Items[i].Data).FileName);
+    if sel.Count > 0 then
+      JamBatchForm.AddFilesFromBrowser(sel);
+  finally
+    sel.Free;
+  end;
 end;
 
 function TJamBrowserFrm.CanDisplay(const Name: string): Boolean;
@@ -430,10 +525,12 @@ begin
     lblDateCreate.visible := False;
     lblDateModify.visible := False;
     lblSize.visible := False;
+    StatusBar1.Panels[1].Text := '';
 
   end
   else
   begin
+    StatusBar1.Panels[1].Text := TJamBrowseNode(Item.data).FileName;
 
     ImagePreview.visible := true;
     ImagePreview.Picture.Bitmap := TJamBrowseNode(Item.data).Orig;
@@ -567,6 +664,7 @@ begin
   SliderThumbSize.Min := 128;
   SliderThumbSize.Max := 512;
   SliderThumbSize.Position := ThumbSize;
+  lblThumbSize.Caption := Format('%d px', [ThumbSize]);
 
   jamListView.CellSizes.Thumbnail.Width := ThumbSize + 40;
   jamListView.CellSizes.Thumbnail.Height := ThumbSize + 40;
@@ -636,6 +734,7 @@ end;
 
 procedure TJamBrowserFrm.FormShow(Sender: TObject);
 begin
+  edtPath.Text := strBrowserPath;
   NavigateToPath(directoryTree, strBrowserPath);
 end;
 
@@ -651,6 +750,7 @@ end;
 procedure TJamBrowserFrm.SliderThumbSizeChange(Sender: TObject);
 begin
   ThumbSize := SliderThumbSize.Position;
+  lblThumbSize.Caption := Format('%d px', [ThumbSize]);
   jamListView.CellSizes.Thumbnail.SetSize(ThumbSize, ThumbSize + 40);
   RedrawThumbnails;
 
@@ -718,7 +818,16 @@ begin
     end;
 
     if LocalFileList.Count = 0 then
+    begin
+      // Empty folder: clear out the previous folder's thumbnails rather
+      // than leaving them on display, and let the same folder be
+      // re-entered later.
+      jamListView.Items.Clear;
+      FileList.Clear;
+      FCurrentLoadPath := '';
+      UpdateStatusCounts;
       Exit;
+    end;
 
     // 2. Save ALL global state before we start mutating it
     for i := 0 to 255 do
@@ -914,6 +1023,9 @@ begin
       cancelJob := False;
       FCurrentLoadPath := '';
       jamListView.Sort.SortAll;
+      // Carry any active name filter over to the freshly loaded items,
+      // and refresh the status-bar count either way.
+      ApplyThumbFilter;
     end;
 
   finally
@@ -1139,6 +1251,7 @@ begin
   begin
     LoadImagesFromFolderAsync(data.FullPath);
     strBrowserPath := data.FullPath;
+    edtPath.Text := data.FullPath;
   end
   else
     OutputDebugString(PChar('Invalid directory: ' + data.FullPath));
@@ -1504,6 +1617,8 @@ begin
     Descending1.Checked := true
   else
     Descending1.Checked := False;
+
+  AddtoBatch1.Enabled := jamListView.Selection.Count > 0;
 
 end;
 

@@ -39,6 +39,21 @@
 - **Jam Browser tree at high DPI.** The folder tree used the 16px shell
   small-icon list at any scale; from 150% it now uses the 32px system
   list and keeps rows tall enough for it.
+
+### Jam Browser improvements
+- Folder path box above the tree: paste or type a path and press Enter
+  to jump there; it tracks tree navigation, and the last-used folder is
+  restored when the browser opens.
+- The thumbnail-size slider shows its current pixel size.
+- Filter box narrows the thumbnails by file name or extension (type
+  `.jip` to see only JIPs); the status bar shows `x of y JAMs` while a
+  filter is active.
+- Status bar shows the folder's JAM count and the selected file's full
+  path.
+- The right-click **Add to Batch Convert** item (previously inert) now
+  queues the selected JAMs in the Batch Converter and opens it.
+- Entering a folder with no JAMs clears the previous folder's
+  thumbnails instead of leaving them on display.
 - **Cut/paste fixes.** Pasting into a HW JAM crashed with a list-index
   error (an uninitialised index was used for the duplicate-JamID check).
   Pasted entries now also update the header item count — previously pasted

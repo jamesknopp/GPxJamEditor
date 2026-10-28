@@ -176,6 +176,9 @@ type
     function AnyFailed: Boolean;
     function StatusColor(S: TJamBatchStatus): TColor;
   public
+    // Entry point for the Jam Browser's "Add to Batch Convert" context
+    // item: queue the given JAM files and bring the batch window up.
+    procedure AddFilesFromBrowser(Files: TStrings);
     destructor Destroy; override;
   end;
 
@@ -338,6 +341,20 @@ begin
   finally
     dlg.Free;
   end;
+end;
+
+procedure TJamBatchForm.AddFilesFromBrowser(Files: TStrings);
+var
+  f: string;
+begin
+  if (Files = nil) or (Files.Count = 0) then
+    Exit;
+  ClearCompletedItems;
+  for f in Files do
+    AddBatchItem(f);
+  RefreshListView;
+  Show;
+  BringToFront;
 end;
 
 procedure TJamBatchForm.btnBrowseOutputClick(Sender: TObject);
