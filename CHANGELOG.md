@@ -23,6 +23,11 @@
   palette.
 - Fixed double-frees around palette generation (texture import and
   regenerate), which frees its input bitmap internally.
+- **Cut/paste fixes.** Pasting into a HW JAM crashed with a list-index
+  error (an uninitialised index was used for the duplicate-JamID check).
+  Pasted entries now also update the header item count — previously pasted
+  HW textures neither drew nor saved, and a saved SW JAM's header
+  undercounted its entries. Cut and paste are now undoable.
 - **High-DPI fixes.** Release builds now declare Per-Monitor v2 DPI
   awareness (previously v1, unlike debug builds), so menus, title bars and
   dialogs scale correctly on mixed-DPI monitor setups. Options-dialog

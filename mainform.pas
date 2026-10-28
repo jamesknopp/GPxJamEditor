@@ -1487,8 +1487,13 @@ begin
                                 Entry := THWjamEntry.Create
                                   (Default (THWJamEntryInfo));
                                 Entry.LoadFromStream(Stream);
-                                if Entry.FInfo.jamID = FHWJamFile.FEntries[X]
-                                  .FInfo.jamID then
+                                // X must scan every existing entry - it was
+                                // previously read uninitialised, indexing
+                                // FEntries with stack garbage (list index out
+                                // of bounds on any HW paste).
+                                for X := 0 to FHWJamFile.FEntries.Count - 1 do
+                                        if Entry.FInfo.jamID = FHWJamFile.FEntries
+                                        [X].FInfo.jamID then
                                         Entry.FInfo.jamID :=
                                         FHWJamFile.GetNextJamID
                                         (FHWJamFile.FEntries) + i;
@@ -6425,6 +6430,8 @@ begin
                 if not Clipboard.HasFormat(ClipboardHWJAM) then
                         Exit;
 
+                PushUndoState;
+
                 DeSelectTexture;
                 SelectedTextureList.Clear;
 
@@ -6432,6 +6439,11 @@ begin
 
                 for i := 0 to jamHWList.Count - 1 do
                         FHWJamFile.FEntries.Add(jamHWList[i]);
+
+                // Keep the header count in step - the HW draw and save
+                // loops iterate NumItems, not FEntries.Count, so without
+                // this the pasted textures neither render nor save.
+                FHWJamFile.FHeader.NumItems := FHWJamFile.FEntries.Count;
 
                 intSelectedTexture := FHWJamFile.FEntries.Count - 1;
                 if not SelectedTextureList.Contains(intSelectedTexture) then
@@ -6457,6 +6469,8 @@ begin
                 if not Clipboard.HasFormat(ClipboardJAM) then
                         Exit;
 
+                PushUndoState;
+
                 DeSelectTexture;
                 SelectedTextureList.Clear;
 
@@ -6464,6 +6478,11 @@ begin
 
                 for i := 0 to jamList.Count - 1 do
                         FJamFile.FEntries.Add(jamList[i]);
+
+                // Keep the header count in step - SaveToFile writes FHeader
+                // verbatim, so a stale NumItems corrupts the saved file's
+                // layout once pasted entries are appended.
+                FJamFile.FHeader.NumItems := FJamFile.FEntries.Count;
 
                 intSelectedTexture := FJamFile.FEntries.Count - 1;
                 if not SelectedTextureList.Contains(intSelectedTexture) then
@@ -6700,6 +6719,10 @@ var
 begin
 
         Copy;
+
+        // Snapshot before the deletes - cut bypasses TFormMain.DeleteTexture
+        // (which pushes its own undo state) and removes entries directly.
+        PushUndoState;
 
         if boolHWJAM then
         begin
