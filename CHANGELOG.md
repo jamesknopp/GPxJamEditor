@@ -23,6 +23,12 @@
   palette.
 - Fixed double-frees around palette generation (texture import and
   regenerate), which frees its input bitmap internally.
+- **Jam Analysis usability.** The texture list's columns were stored a
+  few pixels wide and the list control doesn't rescale with DPI — the
+  dialog now applies usable, DPI-scaled column widths when it opens. The
+  GP2 / GP3 / GP3 2000 scan buttons open the Options dialog to assign a
+  missing install location (and run the scan once it's set) instead of
+  just reporting that it isn't defined.
 - **Cut/paste fixes.** Pasting into a HW JAM crashed with a list-index
   error (an uninitialised index was used for the duplicate-JamID check).
   Pasted entries now also update the header item count — previously pasted

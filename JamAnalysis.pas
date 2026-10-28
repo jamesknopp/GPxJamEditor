@@ -123,6 +123,8 @@ type
     function LoadAnalysisFolder: string;
     procedure SaveAnalysisFolder(const Folder: string);
     function SelectedJamItem: TJamItem;
+    procedure SetDefaultColumnWidths;
+    procedure ShowOptionsForLocation;
 
   public
     // Kept public for any external caller that referenced it. Not used
@@ -136,8 +138,10 @@ var
 implementation
 
 uses
-  mainform; // for FormMain.LoadJam on double-click — implementation-uses
+  mainform, // for FormMain.LoadJam on double-click — implementation-uses
             // avoids a circular reference (mainform uses JamAnalysis too)
+  Options;  // scan buttons open the Options dialog when no GPx install
+            // location has been assigned yet
 
 {$R *.dfm}
 
@@ -174,6 +178,42 @@ begin
   FTexturesFound := 0;
   FLastSummary := '';
   FSelectedItem := nil;
+  SetDefaultColumnWidths;
+end;
+
+procedure TfrmJamAnalysis.SetDefaultColumnWidths;
+// The listview's columns are stored in the DFM as an opaque binary blob
+// that carries collapsed (16px) widths, and TEasyListview predates
+// per-monitor DPI so it never rescales them either. Assign usable widths
+// here, scaled to the DPI the form opened at.
+var
+  i, w: Integer;
+begin
+  for i := 0 to jamlistview.Header.Columns.Count - 1 do
+  begin
+    case i of
+      0:      w := 110; // Texture thumbnail
+      1:      w := 280; // File path
+      2..4:   w := 64;  // JamID / Height / PalSize
+      21, 22: w := 60;  // ScaleX / ScaleY
+      23:     w := 80;  // ScaleFactor
+    else      w := 70;  // TexFlag1-16, ScaleFlag1-8, IDX03/0E/18[n]
+    end;
+    jamlistview.Header.Columns[i].Visible := True;
+    jamlistview.Header.Columns[i].Width := MulDiv(w, PixelsPerInch, 96);
+  end;
+end;
+
+procedure TfrmJamAnalysis.ShowOptionsForLocation;
+// A scan button was pressed with no matching GPx install location
+// assigned. Bring up the Options dialog (modally, so the scan can carry
+// on as soon as it closes) for the user to set it. Options may already
+// be open non-modally from the main form — hide it first, because a
+// visible window cannot be shown modal.
+begin
+  if optionsForm.Visible then
+    optionsForm.Hide;
+  optionsForm.ShowModal;
 end;
 
 procedure TfrmJamAnalysis.FormDestroy(Sender: TObject);
@@ -315,8 +355,11 @@ begin
   end;
   if strGP2Location.Length = 0 then
   begin
-    ShowMessage('GP2 location not defined - go to Options to set it.');
-    Exit;
+    // No GP2 install recorded — open Options so the user can assign it,
+    // then carry on with the scan if they did.
+    ShowOptionsForLocation;
+    if strGP2Location.Length = 0 then
+      Exit;
   end;
   RunScan(strGP2Location, chkSubfolders.Checked);
 end;
@@ -330,8 +373,9 @@ begin
   end;
   if strGP3Location.Length = 0 then
   begin
-    ShowMessage('GP3 location not defined - go to Options to set it.');
-    Exit;
+    ShowOptionsForLocation;
+    if strGP3Location.Length = 0 then
+      Exit;
   end;
   RunScan(strGP3Location, chkSubfolders.Checked);
 end;
@@ -345,8 +389,9 @@ begin
   end;
   if strGP32kLocation.Length = 0 then
   begin
-    ShowMessage('GP3 2000 location not defined - go to Options to set it.');
-    Exit;
+    ShowOptionsForLocation;
+    if strGP32kLocation.Length = 0 then
+      Exit;
   end;
   RunScan(strGP32kLocation, chkSubfolders.Checked);
 end;
