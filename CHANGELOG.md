@@ -25,10 +25,20 @@
   regenerate), which frees its input bitmap internally.
 - **Jam Analysis usability.** The texture list's columns were stored a
   few pixels wide and the list control doesn't rescale with DPI — the
-  dialog now applies usable, DPI-scaled column widths when it opens. The
-  GP2 / GP3 / GP3 2000 scan buttons open the Options dialog to assign a
-  missing install location (and run the scan once it's set) instead of
-  just reporting that it isn't defined.
+  dialog now sizes every column at open: fixed widths for the thumbnail
+  and file path, and header-caption/3-digit widths (measured at the
+  current DPI) for the numeric columns, with the TexFlag/ScaleFlag
+  headers shortened to Flag1–16 / SFlag1–8. The list's horizontal
+  scrollbar now always covers the full set of columns (previously it
+  could not reach past the window, or never appeared on an empty list).
+  Scans launched from the GP2 / GP3 / GP3 2000 buttons assume that
+  game's palette from the folder source instead of per-file detection;
+  custom-folder scans still detect. The scan buttons also open the
+  Options dialog to assign a missing install location (and run the scan
+  once it's set) instead of just reporting that it isn't defined.
+- **Jam Browser tree at high DPI.** The folder tree used the 16px shell
+  small-icon list at any scale; from 150% it now uses the 32px system
+  list and keeps rows tall enough for it.
 - **Cut/paste fixes.** Pasting into a HW JAM crashed with a list-index
   error (an uninitialised index was used for the duplicate-JamID check).
   Pasted entries now also update the header item count — previously pasted

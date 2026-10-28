@@ -592,9 +592,19 @@ begin
 
   directoryTree.RootNodeCount := DriveCount;
 
-  SystemImages.Handle := SHGetFileInfo('', 0, SFI, SizeOf(SFI),
-    SHGFI_SYSICONINDEX or SHGFI_SMALLICON);
+  // Shell icons: the 16px small-icon list looks tiny and blurry once the
+  // tree scales up on a high-DPI monitor — switch to the 32px system list
+  // from 150% scaling, and keep the rows tall enough to hold whichever
+  // list we got.
+  if PixelsPerInch >= 144 then
+    SystemImages.Handle := SHGetFileInfo('', 0, SFI, SizeOf(SFI),
+      SHGFI_SYSICONINDEX or SHGFI_LARGEICON)
+  else
+    SystemImages.Handle := SHGetFileInfo('', 0, SFI, SizeOf(SFI),
+      SHGFI_SYSICONINDEX or SHGFI_SMALLICON);
   SystemImages.ShareImages := true;
+  if directoryTree.DefaultNodeHeight < SystemImages.Height + 4 then
+    directoryTree.DefaultNodeHeight := SystemImages.Height + 4;
   FThumbSize := 200;
 
   // NavigateToPath(directoryTree,strBrowserPath);

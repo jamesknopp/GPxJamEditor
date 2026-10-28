@@ -8049,6 +8049,12 @@ begin
         end;
         if OwnerListview.Selection.GroupSelections then
           OwnerListview.Selection.BuildSelectionGroupings(False);
+        // Report views: the header can extend past any group content, and
+        // with no groups at all ViewRect stays empty - include the header
+        // extent so the horizontal scrollbar can always reach every column.
+        if (OwnerListview.View in [elsReport, elsReportThumb]) and
+          (ViewRect.Right < OwnerListview.Header.ViewWidth) then
+          ViewRect.Right := OwnerListview.Header.ViewWidth;
         OwnerListview.Scrollbars.SetViewRect(ViewRect, True);
       finally
         Exclude(FGroupsState, egsRebuilding);

@@ -115,8 +115,15 @@ type
     // and the event already hands us the item we need.
     FSelectedItem: TEasyItem;
 
+    // Palette handling for the current scan: the GP2/GP3 install buttons
+    // force that game's palette for every SW file (the folder is a better
+    // signal than per-file detection); custom-folder scans keep detecting.
+    FForcePalette: Boolean;
+    FForcedPaletteType: TJamType;
+
     procedure UpdateUIState;
-    procedure RunScan(const Folder: string; Subfolders: Boolean);
+    procedure RunScan(const Folder: string; Subfolders: Boolean;
+      ForcePalette: Boolean = False; ForcedPal: TJamType = jamGP3SW);
     procedure AddFileToListview(const FilePath: string);
     function ShouldSkipFile(const FilePath: string): Boolean;
     function MakeThumbnail(Source: TBitmap): TBitmap;
@@ -184,23 +191,43 @@ end;
 procedure TfrmJamAnalysis.SetDefaultColumnWidths;
 // The listview's columns are stored in the DFM as an opaque binary blob
 // that carries collapsed (16px) widths, and TEasyListview predates
-// per-monitor DPI so it never rescales them either. Assign usable widths
-// here, scaled to the DPI the form opened at.
+// per-monitor DPI so it never rescales them either. Size everything here:
+// fixed widths for the thumbnail and file-path columns; the rest hold
+// small numbers (3 digits at most), so give each just enough for its
+// header caption or a 3-digit value, measured with the header font so
+// the result tracks the current DPI.
 var
-  i, w: Integer;
+  i, w, pad, numW: Integer;
+  col: TEasyColumn;
+  measure: TBitmap;
 begin
-  for i := 0 to jamlistview.Header.Columns.Count - 1 do
-  begin
-    case i of
-      0:      w := 110; // Texture thumbnail
-      1:      w := 280; // File path
-      2..4:   w := 64;  // JamID / Height / PalSize
-      21, 22: w := 60;  // ScaleX / ScaleY
-      23:     w := 80;  // ScaleFactor
-    else      w := 70;  // TexFlag1-16, ScaleFlag1-8, IDX03/0E/18[n]
+  measure := TBitmap.Create;
+  try
+    measure.Canvas.Font.Assign(jamlistview.Header.Font);
+    pad := MulDiv(16, PixelsPerInch, 96); // cell margins + sort glyph
+    numW := measure.Canvas.TextWidth('000');
+    for i := 0 to jamlistview.Header.Columns.Count - 1 do
+    begin
+      col := jamlistview.Header.Columns[i];
+
+      // Shorter flag captions — the values are single digits, so the
+      // caption is all that drives these columns' width.
+      if (i >= 5) and (i <= 20) then
+        col.Caption := 'Flag' + IntToStr(i - 4)
+      else if (i >= 24) and (i <= 31) then
+        col.Caption := 'SFlag' + IntToStr(i - 23);
+
+      case i of
+        0: w := MulDiv(110, PixelsPerInch, 96); // texture thumbnail
+        1: w := MulDiv(280, PixelsPerInch, 96); // file path
+      else
+        w := Max(measure.Canvas.TextWidth(col.Caption), numW) + pad;
+      end;
+      col.Visible := True;
+      col.Width := w;
     end;
-    jamlistview.Header.Columns[i].Visible := True;
-    jamlistview.Header.Columns[i].Width := MulDiv(w, PixelsPerInch, 96);
+  finally
+    measure.free;
   end;
 end;
 
@@ -361,7 +388,7 @@ begin
     if strGP2Location.Length = 0 then
       Exit;
   end;
-  RunScan(strGP2Location, chkSubfolders.Checked);
+  RunScan(strGP2Location, chkSubfolders.Checked, True, jamGP2);
 end;
 
 procedure TfrmJamAnalysis.btnScanGP3Click(Sender: TObject);
@@ -377,7 +404,7 @@ begin
     if strGP3Location.Length = 0 then
       Exit;
   end;
-  RunScan(strGP3Location, chkSubfolders.Checked);
+  RunScan(strGP3Location, chkSubfolders.Checked, True, jamGP3SW);
 end;
 
 procedure TfrmJamAnalysis.scanGP32KClick(Sender: TObject);
@@ -393,7 +420,7 @@ begin
     if strGP32kLocation.Length = 0 then
       Exit;
   end;
-  RunScan(strGP32kLocation, chkSubfolders.Checked);
+  RunScan(strGP32kLocation, chkSubfolders.Checked, True, jamGP3SW);
 end;
 
 procedure TfrmJamAnalysis.Button1Click(Sender: TObject);
@@ -445,7 +472,8 @@ begin
     or (fn = 'shill.jam');
 end;
 
-procedure TfrmJamAnalysis.RunScan(const Folder: string; Subfolders: Boolean);
+procedure TfrmJamAnalysis.RunScan(const Folder: string; Subfolders: Boolean;
+  ForcePalette: Boolean; ForcedPal: TJamType);
 // Synchronous main-thread scan loop. Using Application.ProcessMessages
 // rather than TTask.Run because:
 //   - TBitmap.Canvas.Draw (used per thumbnail) calls GDI, which is
@@ -463,6 +491,9 @@ var
   lastUIUpdateTick, nowTick: Cardinal;
 begin
   if FScanRunning then Exit; // Re-entry safety.
+
+  FForcePalette := ForcePalette;
+  FForcedPaletteType := ForcedPal;
 
   if Subfolders then
     opt := TSearchOption.soAllDirectories
@@ -650,6 +681,7 @@ var
   Item: TEasyItem;
   i, j, k: Integer;
   info: TJamQuickInfo;
+  palType: TJamType;
 begin
   // Single-pass probe: one file open for the magic + palette-type guess,
   // instead of the old isHWJAM -> Detect pair which opened the file
@@ -715,9 +747,16 @@ begin
       if not chkSoftware.Checked then Exit;
       JamFile := TJamFile.Create;
       try
-        // Palette type came from QuickInspectJam up top — no extra disk
-        // read needed here.
-        case info.PaletteType of
+        // Palette choice: a scan launched from the GP2/GP3 install
+        // buttons assumes that game's palette for every file — the
+        // directory source is a better signal than per-file detection,
+        // and if a palette looks wrong the user deals with it. Custom
+        // folder scans still use QuickInspectJam's guess.
+        if FForcePalette then
+          palType := FForcedPaletteType
+        else
+          palType := info.PaletteType;
+        case palType of
           jamGP2:
             for i := 0 to 255 do GPXPal[i] := Gp2Pal[i];
           jamGP3SW:
