@@ -3,7 +3,7 @@ object optionsForm: ToptionsForm
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Options'
-  ClientHeight = 645
+  ClientHeight = 665
   ClientWidth = 542
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -93,7 +93,7 @@ object optionsForm: ToptionsForm
   end
   object GroupBox2: TGroupBox
     Left = 8
-    Top = 336
+    Top = 356
     Width = 526
     Height = 162
     Caption = 'Jam Format Detection'
@@ -123,7 +123,7 @@ object optionsForm: ToptionsForm
   end
   object Button3: TButton
     Left = 240
-    Top = 612
+    Top = 632
     Width = 75
     Height = 25
     Caption = 'Close'
@@ -134,16 +134,15 @@ object optionsForm: ToptionsForm
     Left = 8
     Top = 175
     Width = 526
-    Height = 155
+    Height = 175
     Caption = 'General Options'
     TabOrder = 3
     object lblGenPalNote: TLabel
       Left = 232
       Top = 55
-      Width = 296
-      Height = 45
-      AutoSize = False
-      Caption = 
+      Width = 282
+      Height = 60
+      Caption =
         'Palette generation uses the palette settings from the main windo' +
         'w (simplify method, thresholds, transparency protection).'
       WordWrap = True
@@ -159,7 +158,7 @@ object optionsForm: ToptionsForm
     end
     object rgGP3Version: TRadioGroup
       Left = 9
-      Top = 103
+      Top = 123
       Width = 520
       Height = 48
       Caption = 'GP3 Version (RCR render)'
@@ -192,7 +191,7 @@ object optionsForm: ToptionsForm
   end
   object GroupBox4: TGroupBox
     Left = 8
-    Top = 504
+    Top = 524
     Width = 526
     Height = 100
     Caption = 'File Associations'
@@ -201,7 +200,7 @@ object optionsForm: ToptionsForm
       Left = 10
       Top = 27
       Width = 500
-      Height = 15
+      Height = 19
       AutoSize = False
       Caption = 'Checking...'
     end

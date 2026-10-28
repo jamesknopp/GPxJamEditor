@@ -23,6 +23,11 @@
   palette.
 - Fixed double-frees around palette generation (texture import and
   regenerate), which frees its input bitmap internally.
+- **High-DPI fixes.** Release builds now declare Per-Monitor v2 DPI
+  awareness (previously v1, unlike debug builds), so menus, title bars and
+  dialogs scale correctly on mixed-DPI monitor setups. Options-dialog
+  labels that could clip at 125%/150% display scaling now auto-size or
+  have room to grow.
 
 ### Added
 - **Options → Generate palettes on texture import** and **Generate palettes on
