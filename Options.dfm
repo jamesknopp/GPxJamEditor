@@ -3,7 +3,7 @@ object optionsForm: ToptionsForm
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Options'
-  ClientHeight = 620
+  ClientHeight = 645
   ClientWidth = 542
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -93,7 +93,7 @@ object optionsForm: ToptionsForm
   end
   object GroupBox2: TGroupBox
     Left = 8
-    Top = 311
+    Top = 336
     Width = 526
     Height = 162
     Caption = 'Jam Format Detection'
@@ -123,7 +123,7 @@ object optionsForm: ToptionsForm
   end
   object Button3: TButton
     Left = 240
-    Top = 587
+    Top = 612
     Width = 75
     Height = 25
     Caption = 'Close'
@@ -134,11 +134,22 @@ object optionsForm: ToptionsForm
     Left = 8
     Top = 175
     Width = 526
-    Height = 130
+    Height = 155
     Caption = 'General Options'
     TabOrder = 3
+    object lblGenPalNote: TLabel
+      Left = 232
+      Top = 55
+      Width = 296
+      Height = 45
+      AutoSize = False
+      Caption = 
+        'Palette generation uses the palette settings from the main windo' +
+        'w (simplify method, thresholds, transparency protection).'
+      WordWrap = True
+    end
     object chkAutoArrange: TCheckBox
-      Left = 10
+      Left = 11
       Top = 32
       Width = 319
       Height = 17
@@ -147,11 +158,12 @@ object optionsForm: ToptionsForm
       OnClick = chkAutoArrangeClick
     end
     object rgGP3Version: TRadioGroup
-      Left = 10
-      Top = 56
-      Width = 200
-      Height = 66
+      Left = 9
+      Top = 103
+      Width = 520
+      Height = 48
       Caption = 'GP3 Version (RCR render)'
+      Columns = 3
       ItemIndex = 0
       Items.Strings = (
         'GP3'
@@ -159,10 +171,28 @@ object optionsForm: ToptionsForm
       TabOrder = 1
       OnClick = rgGP3VersionClick
     end
+    object chkGenPalTexImport: TCheckBox
+      Left = 11
+      Top = 56
+      Width = 296
+      Height = 17
+      Caption = 'Generate palettes on texture import'
+      TabOrder = 2
+      OnClick = chkGenPalTexImportClick
+    end
+    object chkGenPalCanvasImport: TCheckBox
+      Left = 11
+      Top = 79
+      Width = 296
+      Height = 17
+      Caption = 'Generate palettes on canvas import'
+      TabOrder = 3
+      OnClick = chkGenPalCanvasImportClick
+    end
   end
   object GroupBox4: TGroupBox
     Left = 8
-    Top = 479
+    Top = 504
     Width = 526
     Height = 100
     Caption = 'File Associations'

@@ -2430,6 +2430,9 @@ begin
                                   intSimplifyMethod, intSimplifyThreshold,
                                   intBlurThreshold, boolSimpifyAllPals,
                                   boolProtectTrans);
+                                // GenerateGPxBMP freed tmpCanvas - stop the
+                                // finally below freeing it a second time.
+                                tmpCanvas := nil;
 
                         end
                         else
@@ -4155,6 +4158,12 @@ begin
                                 boolShowAdvancedFlags := Reg.ReadBool('ShowAdvancedFlags');
                         if Reg.ValueExists('DPIScaling') then
                                 boolDPIScaling := Reg.ReadBool('DPIScaling');
+                        if Reg.ValueExists('GenPalOnTexImport') then
+                                boolGenPalOnTexImport :=
+                                  Reg.ReadBool('GenPalOnTexImport');
+                        if Reg.ValueExists('GenPalOnCanvasImport') then
+                                boolGenPalOnCanvasImport :=
+                                  Reg.ReadBool('GenPalOnCanvasImport');
 
                         Reg.CloseKey;
                 end;
@@ -4311,6 +4320,10 @@ begin
                         Reg.WriteBool('DrawOutlines', boolDrawOutlines);
                         Reg.WriteBool('ShowAdvancedFlags', boolShowAdvancedFlags);
                         Reg.WriteBool('DPIScaling', boolDPIScaling);
+                        Reg.WriteBool('GenPalOnTexImport',
+                          boolGenPalOnTexImport);
+                        Reg.WriteBool('GenPalOnCanvasImport',
+                          boolGenPalOnCanvasImport);
                         Reg.CloseKey;
                 end;
         finally
@@ -6359,11 +6372,28 @@ begin
                 if (importDialog.filename <> '') and
                   FileExists(importDialog.filename) then
                 begin
+                        PushUndoState;
                         if boolHWJAM then
                                 FHWJamFile.ImportCanvas(importDialog.filename)
                         else
+                        begin
+                                // Palette generation honours the palette
+                                // settings on the main window - sync them
+                                // before encoding.
+                                intSimplifyThreshold :=
+                                  Round(numBox_SimpThresh.Value);
+                                intSimplifyMethod := comboSimpMethod.ItemIndex;
+                                intBlurThreshold :=
+                                  Round(numBox_BlurAmount.Value);
+                                boolSimpifyAllPals := chkBoxSimpPal.Checked;
+                                boolProtectTrans := chkBoxTrans.Checked;
+
                                 FJamFile.ImportCanvas(importDialog.filename);
+                                if boolJipMode then
+                                        FJamFile.DrawJIPMipmaps;
+                        end;
                         strImportPath := ExtractFilePath(importDialog.filename);
+                        JamModified(true);
                 end;
 
         end
@@ -6580,6 +6610,17 @@ begin
                         end
                         else
                         begin
+                                // Palette generation honours the palette
+                                // settings on the main window - sync them
+                                // before encoding.
+                                intSimplifyThreshold :=
+                                  Round(numBox_SimpThresh.Value);
+                                intSimplifyMethod := comboSimpMethod.ItemIndex;
+                                intBlurThreshold :=
+                                  Round(numBox_BlurAmount.Value);
+                                boolSimpifyAllPals := chkBoxSimpPal.Checked;
+                                boolProtectTrans := chkBoxTrans.Checked;
+
                                 FJamFile.AddTexture(importDialog.filename);
 
                                 if boolJipMode or boolAutoLayout then
@@ -6598,9 +6639,11 @@ begin
                                         FJamFile.FEntries[JamRects[i].index]
                                         .FInfo.Y := JamRects[i].Y;
                                         end;
-                                        Fjamfile.DrawJIPMipmaps;
 
                                         end;
+
+                                        if boolJipMode then
+                                        Fjamfile.DrawJIPMipmaps;
                                 end;
                                 JamReGen;
 
@@ -6981,6 +7024,7 @@ begin
                                 end;
 
                         end;
+                if boolJipMode then
                 Fjamfile.DrawJIPMipmaps;
                 end;
 

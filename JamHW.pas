@@ -508,6 +508,9 @@ begin
 
   intJamMaxHeight := FHeader.JamTotalHeight;
 
+  canvasWidth := 256;
+  canvasHeight := FHeader.JamTotalHeight;
+
   // Write Canvas for the first time
 
   CanvasBitmap := TBitmap.Create;
@@ -653,9 +656,23 @@ begin
       FreeAndNil(CanvasBitmap);
       CanvasBitmap := TBitmap.Create;
       CanvasBitmap.Assign(bmp);
+      // DrawSingleTexture copies rows byte-for-byte out of CanvasBitmap,
+      // so it must match the pf24bit layout LoadFromFile builds.
+      CanvasBitmap.PixelFormat := pf24bit;
 
+      // Feed the new canvas into every entry - DrawSingleTexture returns
+      // the crop, it does not update the entry itself.
       for i := 0 to FHeader.NumItems - 1 do
-        DrawSingleTexture(i);
+        with FEntries[i] do
+        begin
+          if assigned(FTexture) then
+            FTexture.free;
+          FTexture := DrawSingleTexture(i);
+
+          if not assigned(FOriginalTex) then
+            FOriginalTex := TBitmap.Create;
+          FOriginalTex.Assign(FTexture);
+        end;
     end
     else
     begin

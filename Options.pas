@@ -29,6 +29,9 @@ type
     Button3: TButton;
     GroupBox3: TGroupBox;
     chkAutoArrange: TCheckBox;
+    chkGenPalTexImport: TCheckBox;
+    chkGenPalCanvasImport: TCheckBox;
+    lblGenPalNote: TLabel;
     rgGP3Version: TRadioGroup;
     GroupBox4: TGroupBox;
     lblAssocStatus: TLabel;
@@ -42,6 +45,8 @@ type
     procedure Button3Click(Sender: TObject);
     procedure btnGP32kBrowseClick(Sender: TObject);
     procedure chkAutoArrangeClick(Sender: TObject);
+    procedure chkGenPalTexImportClick(Sender: TObject);
+    procedure chkGenPalCanvasImportClick(Sender: TObject);
     procedure rgGP3VersionClick(Sender: TObject);
     procedure btnAssocRegisterClick(Sender: TObject);
     procedure btnAssocUnregisterClick(Sender: TObject);
@@ -215,6 +220,16 @@ begin
   boolAutoLayout := chkAutoArrange.checked;
 end;
 
+procedure ToptionsForm.chkGenPalTexImportClick(Sender: TObject);
+begin
+  boolGenPalOnTexImport := chkGenPalTexImport.checked;
+end;
+
+procedure ToptionsForm.chkGenPalCanvasImportClick(Sender: TObject);
+begin
+  boolGenPalOnCanvasImport := chkGenPalCanvasImport.checked;
+end;
+
 procedure ToptionsForm.FormShow(Sender: TObject);
 var
   rcr: TJamRCRSettings;
@@ -224,6 +239,8 @@ begin
   edtGp32KLoc.text := strGP32kLocation;
 
   chkAutoArrange.checked := boolAutoLayout;
+  chkGenPalTexImport.checked := boolGenPalOnTexImport;
+  chkGenPalCanvasImport.checked := boolGenPalOnCanvasImport;
 
   rcr := LoadRCRSettings;
   if rcr.GP3Version = gp3v2000 then

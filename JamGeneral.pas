@@ -156,6 +156,11 @@ var
 
   boolAutoLayout: Boolean;
 
+  // Generate per-texture palettes (using the main-window palette settings)
+  // when importing. Persisted in the registry; default on.
+  boolGenPalOnTexImport: Boolean = True;
+  boolGenPalOnCanvasImport: Boolean = True;
+
   boolRcrJam: Boolean;
   booljipMode: Boolean;
 

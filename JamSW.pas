@@ -504,6 +504,7 @@ begin
   sFilename := lowercase(ChangeFileExt(ExtractFileName(FileName), ''));
 
   // CanvasBitmap := TBitmap.Create;
+  canvasWidth := 256;
   canvasHeight := Height;
 
   SetLength(FRawData, 256 * Height);
@@ -842,7 +843,7 @@ procedure TJamFile.ImportCanvas(FileName: string);
 var
   indices, tempRawCanvas: TBytes;
   X, Y, i, origidx, bestidx: integer;
-  bmp: TBitmap;
+  bmp, palBmp, palSrc: TBitmap;
 begin
 
   bmp := TBitmap.Create;
@@ -851,7 +852,17 @@ begin
 
   if (bmp.Height = canvasHeight) and (bmp.Width = canvasWidth) then
   begin
-    indices := BitmapToIndices(bmp);
+    // Map the image into the GPx palette before reading indices.
+    // BitmapToIndices alone just flips the bitmap to pf8bit, which
+    // quantises against the file's own palette - those index values are
+    // meaningless as GPx indices and come out as the wrong colours.
+    palBmp := CreateGPxPalBMP(bmp);
+    try
+      palBmp.Palette := CreateGPxPal;
+      indices := BitmapToIndices(palBmp);
+    finally
+      palBmp.free;
+    end;
 
     SetLength(tempRawCanvas, canvasWidth * canvasHeight);
 
@@ -874,9 +885,26 @@ begin
     for i := 0 to FHeader.NumItems - 1 do
     begin
 
-      ZeroPalette(i);
       with FEntries[i] do
       begin
+        // Feed the imported canvas back into the entry's own raw indices:
+        // DrawPalTexture, the JIP mip strip and every re-encode read
+        // FRawTexture, not FRawData, so leaving it stale reverts the
+        // import as soon as anything regenerates. (ZeroPalette is no use
+        // here - it re-encodes from the pre-import FOriginalTex.)
+        if (FInfo.X >= 0) and (FInfo.Y >= 0) and
+          (FInfo.X + FInfo.Width <= canvasWidth) and
+          (FInfo.Y + FInfo.Height <= canvasHeight) then
+          FRawTexture := ExtractRawTexture(FRawData, FInfo.X, FInfo.Y,
+            FInfo.Width, FInfo.Height, canvasWidth);
+
+        // The canvas pixels are global-palette indices, so per-texture
+        // palettes no longer apply.
+        FInfo.ImagePtr := 0;
+        PaletteSizeDiv4 := 0;
+        for X := 0 to 3 do
+          FPalettes[X] := nil;
+
         if assigned(FTexture) then
           FTexture.free;
 
@@ -885,6 +913,23 @@ begin
         if assigned(FOriginalTex) then
           FreeAndNil(FOriginalTex);
         FOriginalTex := DrawPalTexture(i);
+
+        // Optionally rebuild per-texture palettes from the imported pixels,
+        // honouring the main-window palette settings (same path as texture
+        // import / regen). GenerateGPxBMP re-encodes FRawTexture to slot
+        // indices, and EncodeCanvas folds those back into FRawData on save.
+        if boolGenPalOnCanvasImport and (not boolJipMode) then
+        begin
+          // GenerateGPxBMP frees its input bitmap, so hand it a copy,
+          // never FOriginalTex itself.
+          palSrc := TBitmap.Create;
+          palSrc.Assign(FOriginalTex);
+          FreeAndNil(FTexture);
+          FTexture := GenerateGPxBMP(palSrc, i, intSimplifyMethod,
+            intSimplifyThreshold, intBlurThreshold, boolSimpifyAllPals,
+            boolProtectTrans);
+        end;
+
         CachePaletteBMP(i);
 
       end;
@@ -1482,6 +1527,13 @@ var
   dr, dg, db, dist, bestDist: integer;
 
 begin
+  // JIP-only: rebuilds the mip strip, resizes FRawData and overwrites
+  // JamTotalHeight, and reads FRawTexture, which non-JIP imports never
+  // populate (GenerateGPxBMP leaves it nil) - running this on a plain
+  // JAM corrupts it or range-checks.
+  if not boolJipMode then
+    Exit;
+
   mipMapHeight := 0;
 
   for i := 0 to FEntries.Count - 1 do
@@ -1562,9 +1614,12 @@ begin
     srcStride := 256;
 
     TempRaw := FEntries[i].FRawTexture;
-    // tempSize := H * W;
 
-    // showMessage(format('JamID %d size: %d versus %d',[fentries[i].FInfo.JamID,length(tempraw),tempSize]));
+    // An entry whose raw indices were never encoded (or are stale after a
+    // resize) would range-check below - leave its region as background.
+    if Length(TempRaw) < W * H then
+      Continue;
+
     for Y := 0 to H - 1 do
     begin
       pos := (Y0 + Y) * srcStride + X0;
@@ -1902,12 +1957,19 @@ begin
     X := FEntries.Count - 1;
     intSelectedTexture := X;
 
-    if boolJipMode = False then
+    if (not boolJipMode) and boolGenPalOnTexImport then
+    begin
       FEntries[X].FTexture := GenerateGPxBMP(scaledCanvas, X, intSimplifyMethod,
         intSimplifyThreshold, intBlurThreshold, boolSimpifyAllPals,
-        boolProtectTrans)
+        boolProtectTrans);
+      // GenerateGPxBMP freed scaledCanvas - stop the finally below
+      // freeing it a second time.
+      scaledCanvas := nil;
+    end
     else
     begin
+      // JIP, or palette generation turned off: encode straight against the
+      // global GPx palette, leaving the entry without per-texture palettes.
       tmpBMP.Assign(newTex.FTexture);
       tmpBMP.PixelFormat := pf8bit;
       tmpBMP := CreateGPxPalBMP(newTex.FTexture);
@@ -1933,8 +1995,7 @@ begin
     srcPic.free;
     tmpCanvas.free;
     scaledCanvas.free;
-    if boolJipMode then
-      tmpBMP.free;
+    tmpBMP.free;
   end;
 end;
 
